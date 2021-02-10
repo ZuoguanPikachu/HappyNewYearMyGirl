@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdui@1.0.1/dist/css/mdui.min.css" integrity="sha384-cLRrMq39HOZdvE0j6yBojO4+1PrHfB7a9l5qLcmRm/fiWXYY+CndJPmyu5FV/9Tw" crossorigin="anonymous"/>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mdui@1.0.1/dist/js/mdui.min.js" integrity="sha384-gCMZcshYKOGRX9r6wbDrvF+TcCCswSHFucUzUPwka+Gr+uHgjlYvkABr95TCOz3A" crossorigin="anonymous"></script>
+    <title>Happy New Year</title>
+    <style>
+        *{
+            padding: 0;
+            margin: 0;
+        }
+
+        #bg{
+            height: 100vh;
+            width: 100vw;
+            background-color: #b82a1e;
+        }
+    </style>
+</head>
+<body>
+    <div id="bg">
+        <button class="mdui-fab mdui-fab-fixed mdui-ripple mdui-color-red-accent"><i class="mdui-icon material-icons">games</i></button>
+        <canvas id="canvas1"></canvas>
+        <canvas id="canvas2"></canvas>
+        <audio src="./firework.wav" loop></audio>
+        <audio src="./firework.wav" loop></audio>
+    </div>
+
+    <script>
+        function init(){
+            ROUND = 0
+            ICON = ["games", "favorite", "comment"]
+        }
+
+        function showBtn(){
+            $("button")[0].classList.remove("mdui-fab-hide")
+            $("button>i").html(ICON[ROUND])
+        }
+
+        function fire(round){
+            let width = window.innerWidth
+            let height = window.innerHeight
+            if(round == 0){
+                var canvas_a = $("#canvas1")
+                var canvas_b = $("#canvas2")
+            }else{
+                var canvas_a = $("#canvas2")
+                var canvas_b = $("#canvas1")
+            }
+
+            canvas_a[0].width = width
+            canvas_a[0].height = height
+            canvas_a.css("display", "block")
+            canvas_b.css("display", "none")
+
+            let ctx = canvas_a[0].getContext("2d")
+
+            const TOTAL = [52, 20]
+            const LIFE = [100, 150]
+            const MASK = [["rgba(184, 42, 30, 0.15)", "rgb(184, 42, 30)"], ["rgba(200, 58, 30, 0.4)", "rgb(200, 58, 30)"]]
+            const INTERVAL = [666, 999]
+            const SHOW = [2500, 3500]
+
+            class Ball{
+                constructor(options) {
+                    this.settings = Object.assign({
+                        color: "yellow",
+                        g: 0.1
+                    }, options)
+                    for(let attr in this.settings){
+                        this[attr] = this.settings[attr]
+                    }
+                }
+
+                update(){
+                    this.x += this.vx
+                    this.y += this.vy
+                    this.vy += this.g
+                }
+
+                render(){
+                    ctx.beginPath()
+                    ctx.fillStyle = this.color
+                    ctx.arc(this.x, this.y, this.r, 0, 2*Math.PI);
+                    ctx.closePath()
+                    ctx.fill()
+                    this.end()
+                }
+            }
+
+            class Fire{
+                constructor(options) {
+                    this.settings = Object.assign({
+                        color: "yellow",
+                        g: 0.05
+                    }, options)
+                    for(let attr in this.settings){
+                        this[attr] = this.settings[attr]
+                    }
+                }
+
+                update(){
+                    this.x += this.vx
+                    this.y += this.vy
+                    this.vy += this.g
+                    if(this.life > 10){
+                        this.life--
+                    }
+                }
+
+                render(){
+                    ctx.beginPath()
+                    ctx.fillStyle = this.color
+                    ctx.arc(this.x, this.y, this.r* Math.min(this.life, 100)/100, 0, 2*Math.PI);
+                    ctx.closePath()
+                    ctx.fill()
+                    this.end()
+                }
+
+            }
+
+            let timer = null
+            let balls = []
+            let ballsTotal = TOTAL[round]
+            let count = 0
+            let fires = []
+
+            timer = setInterval(()=>{
+                if(count == ballsTotal){
+                    clearInterval(timer)
+                    timer = null
+                    count = 0
+                    setTimeout("soundOff()", 500)
+                    setTimeout("showBtn()", SHOW[round])
+                }else{
+                    count++
+                    balls.push(
+                        new Ball({
+                            r: 4,
+                            x: Math.random()*width/3 + width/3,
+                            y : height,
+                            vx: (Math.random() - 0.5)*1.2,
+                            vy: -Math.random()*1.5 - (4/3*0.1*height)**0.5,
+                            end(){
+                                if(this.vy > -0.05){
+                                    balls.splice(balls.indexOf(this), 1)
+
+                                    let size = 0.8 + Math.random()*0.4
+                                    for(let i=0; i<60; i++){
+                                        if(round == 0){
+                                            let power = 1 + Math.random()
+                                            var vx = 1.2*Math.cos(i*6*Math.PI/180)*power*size
+                                            var vy = 1.2*Math.sin(i*6*Math.PI/180)*power*size
+                                        }else{
+                                            var vx = size*1.6*(Math.sin(i*6*Math.PI/180))**3
+                                            var vy = size*(-1.3*Math.cos(i*6*Math.PI/180) + 0.5*Math.cos(2*i*6*Math.PI/180) + 0.2*Math.cos(3*i*6*Math.PI/180) + 0.1*Math.cos(4*i*6*Math.PI/180) - 1)
+                                        }
+
+                                        fires.push(
+                                            new Fire({
+                                                r: 4,
+                                                x: this.x,
+                                                y: this.y,
+                                                vx : vx,
+                                                vy : vy,
+                                                life: LIFE[round] + (Math.random()+1)*10,
+                                                end(){
+                                                    if(this.life <= 10){
+                                                        fires.splice(fires.indexOf(this), 1)
+                                                    }
+                                                }
+                                            })
+                                        )
+                                    }
+                                }
+                            }
+                        })
+                    )
+                }
+            }, INTERVAL[round])
+
+            loop()
+
+            function loop(){
+                if(balls.length || fires.length){
+                    ctx.fillStyle = MASK[round][0]
+                    ctx.fillRect(0, 0, width, height)
+                }else{
+                    ctx.fillStyle = MASK[round][1]
+                    ctx.fillRect(0, 0, width, height)
+                }
+
+                for(let i=0; i<balls.length; i++){
+                    balls[i].update()
+                    balls[i].render()
+                }
+
+                for(let i=0; i<fires.length; i++){
+                    fires[i].update()
+                    fires[i].render()
+                }
+
+                requestAnimationFrame(loop)
+            }
+        }
+
+        function soundOn(){
+            audios = document.querySelectorAll("audio")
+            for(let i=0; i<audios.length; i++){
+                audios[i].currentTime = i
+                audios[i].play()
+            }
+        }
+
+        function soundOff(){
+            audios = document.querySelectorAll("audio")
+            for(let i=0; i<audios.length; i++){
+                audios[i].pause()
+            }
+        }
+
+        document.querySelector("button").addEventListener("click", function(){
+            if(ROUND == 2){
+                swal({
+                    title: "烟花绽放时，我在想你",
+                    text: "这次的烟花就这样结束了，但是我想以后我们会有很多机会一起看烟花的😊",
+                    button: "😊",
+                });
+            }else{
+                fire(ROUND)
+                soundOn()
+            }
+            document.querySelector("button").classList.add('mdui-fab-hide')
+            ROUND++
+        })
+
+        init()
+    </script>
+</body>
+</html>
